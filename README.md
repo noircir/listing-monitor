@@ -84,7 +84,7 @@ The scorer returns structured JSON for each listing:
 export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-Or add it to your shell profile. The venv activate script can also inject it (see `venv/bin/activate`).
+Or add it to your shell profile so it's available every time you open a terminal.
 
 ### 3. Install dependencies
 
