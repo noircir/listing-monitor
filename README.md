@@ -29,11 +29,11 @@ Gmail inbox                    Profile config
  Parse HTML → extract listings      │
      │                              │
      ▼                              │
- Pre-filter (hard constraints) ◄────┘
+ Pre-filter (hard constraints) ◄────┤
      │                              │
      │  (rejects never hit the API) │
      ▼                              │
- Score with Anthropic Haiku ◄─────────┘
+ Score with Anthropic Haiku ◄───────┘
      │
      ▼
  SQLite database
