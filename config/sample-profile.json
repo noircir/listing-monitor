@@ -2,89 +2,86 @@
   "meta": {
     "version": "1.0",
     "last_updated": "2026-01-15",
-    "description": "Example profile: used cars under $15K in the Pacific Northwest. The scorer reads this before evaluating each listing."
+    "description": "Example profile: rural properties under $200K in upstate New York. The scorer reads this before evaluating each listing."
   },
-
   "hard_constraints": {
     "_comment": "Any failure = automatic 0.",
-    "price_ceiling_usd": 15000,
-    "min_year": 2015,
-    "max_mileage_miles": 120000,
+    "price_ceiling_usd": 200000,
+    "min_bedrooms": 2,
+    "min_surface_sqft": 800,
     "dealbreakers": [
-      "salvage title",
-      "flood damage reported",
-      "frame damage noted",
-      "odometer rollback flagged",
-      "lien on title",
-      "non-running / needs tow"
+      "flood zone designation",
+      "no road access",
+      "HOA fees over $300/month",
+      "active code violations",
+      "environmental contamination noted",
+      "tenant in place (occupied rental)",
+      "land only (no structure)"
     ]
   },
-
   "price_scoring": {
-    "_comment": "Tiered scoring. Cheaper = better within reason.",
-    "ideal_max_usd": 10000,
-    "acceptable_max_usd": 15000,
-    "scoring_note": "Under 10K gets a score boost. 10K-15K scored normally. Over 15K is a hard reject."
+    "_comment": "Tiered scoring. Cheaper = better, but don't lose good ones at the top of range.",
+    "ideal_max_usd": 120000,
+    "acceptable_max_usd": 200000,
+    "scoring_note": "Under 120K gets a score boost. 120K-200K scored normally. Over 200K is a hard reject."
   },
-
-  "mileage_scoring": {
-    "_comment": "Lower mileage is better, but high-mileage Toyotas are still fine.",
-    "low_miles": 50000,
-    "normal_miles": 80000,
-    "high_miles": 120000,
-    "scoring_note": "Under 50K miles gets a boost. 50K-80K normal. 80K-120K mild penalty. Over 120K is a hard reject unless it's a Toyota or Honda."
+  "surface_scoring": {
+    "_comment": "Bigger is better at this price range.",
+    "hard_min_sqft": 800,
+    "normal_sqft": 1200,
+    "good_sqft": 1800,
+    "scoring_note": "Under 800 sq ft is a hard reject. 800-1,199 sq ft scored normally. 1,200-1,799 sq ft gets a mild boost. 1,800+ sq ft gets a stronger boost. If surface is not listed, flag it but don't reject."
   },
-
   "target_regions": {
-    "primary": ["Portland OR", "Seattle WA", "Eugene OR", "Olympia WA"],
-    "secondary": ["Boise ID", "Bend OR", "Spokane WA"],
-    "scoring_note": "Primary regions get a score boost. Secondary regions scored normally. California, Nevada = reject (too far to inspect)."
+    "primary": ["Dutchess County", "Greene County", "Columbia County", "Ulster County", "Berkshire County MA", "Schoharie County"],
+    "secondary": ["Delaware County", "Sullivan County", "Otsego County", "Litchfield County CT"],
+    "scoring_note": "Primary regions (Hudson Valley, Catskills, Berkshires) get a score boost. Secondary regions scored normally. NYC metro, Long Island, New Jersey = reject (wrong market)."
   },
-
-  "vehicle_types": {
-    "accepted": ["sedan", "hatchback", "wagon", "small SUV / crossover", "pickup truck (midsize)"],
-    "rejected": ["luxury / sports car", "full-size truck", "commercial van", "RV / motorhome", "motorcycle", "ATV"]
+  "property_types": {
+    "accepted": ["farmhouse", "cottage", "colonial", "village house", "cabin", "detached house"],
+    "rejected": ["condo", "co-op", "mobile home", "commercial property", "vacant lot"]
   },
-
   "condition": {
-    "accepted": ["clean title, runs well", "minor cosmetic issues", "needs basic maintenance (brakes, tires)"],
-    "scoring_note": "Clean title + runs well is ideal. Minor cosmetic issues are fine. Mechanical issues only if price is very low (<$5K)."
+    "accepted": ["habitable but dated", "needs renovation (roof and walls intact)", "fixer-upper (if price is very low, under $60K)"],
+    "scoring_note": "Renovation-ready is PREFERRED. A larger fixer-upper scores higher than a smaller turnkey at the same price. Habitable but dated is also good. The buyer is comfortable with renovation and actively looking for underpriced space.",
+    "preference": "Bigger + needs work > Smaller + move-in ready."
   },
-
+  "proximity_scoring": {
+    "_comment": "Distance to towns and amenities matters for rural properties.",
+    "max_distance_to_town_miles": 20,
+    "scoring_note": "Under 10 miles from a town with grocery/hospital gets a boost. 10-20 miles scored normally. Over 20 miles gets a mild penalty. No road access is a hard reject."
+  },
   "flags_not_rejects": {
     "_comment": "Surface these with a note, do not auto-reject.",
     "items": [
-      "single owner — generally a good sign",
-      "no maintenance records — could be fine, needs inspection",
-      "aftermarket modifications — check if tasteful or warranty-voiding",
-      "out-of-state title — may need emissions re-test",
-      "dealer listing vs private seller — note for price negotiation context",
-      "no photos or very few photos — might be hidden gem or red flag"
+      "well water instead of municipal (common in rural areas, not a dealbreaker)",
+      "septic system instead of sewer (same as above)",
+      "no central heating (wood stove or space heaters, needs upgrade)",
+      "unpaved/gravel driveway (normal for rural, not an issue)",
+      "surface area not listed (could be fine, needs manual check)",
+      "property tax over $5K/year (note for budget planning)"
     ]
   },
-
   "features_not_scored": {
-    "_comment": "Noted but don't affect score yet.",
-    "observe_and_report": ["AWD/4WD", "backup camera", "heated seats", "sunroof", "tow package", "roof rack", "low owner count", "service records available", "winter tires included"]
+    "_comment": "Buyer is early in research. These are noted but don't affect score yet.",
+    "observe_and_report": ["lot size", "barn or outbuildings", "creek or pond", "south-facing", "mountain views", "detached garage", "original hardwood floors", "stone foundation", "proximity to hiking trails", "proximity to train station"]
   },
-
   "scoring_thresholds": {
     "surface_to_candidate": 7,
     "needs_review": "5-6",
     "auto_dismiss": 4,
     "preference": "Prefer false negatives over false positives. Buyer's time is limited."
   },
-
   "output_format": {
     "score": "integer 0-10",
     "hard_constraint_pass": "boolean",
     "hard_constraint_failures": "list",
     "flags": "list of {flag, note}",
     "price_usd": "integer",
-    "year": "integer or 'unknown'",
-    "mileage_miles": "number or 'unknown'",
-    "location": "city, state",
-    "vehicle_type": "string",
+    "bedrooms": "integer or 'unknown'",
+    "surface_sqft": "number or 'unknown'",
+    "location": "town, county, state",
+    "property_type": "string",
     "condition_estimate": "string",
     "notable_features": "list of observed features from the features_not_scored list",
     "reasoning": "2-3 sentences",

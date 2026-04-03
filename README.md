@@ -1,10 +1,8 @@
 # listing-monitor
 
-I was getting 30 to 40 listing alert emails a day from multiple sites. Most were irrelevant: wrong price, wrong area, wrong type. I spent 20 minutes every morning scanning them manually, opening tabs, mentally scoring each one. Most mornings I'd find maybe 2 or 3 worth a second look.
+Real estate listing sites send dozens of alert emails a day, most of them irrelevant: wrong price, wrong area, wrong type. Scanning them manually takes 20 minutes every day, and most of it is wasted on listings that don't match.
 
-So I built an agent that reads the emails, extracts every listing, scores each one against my criteria using Claude, and shows me only the matches worth looking at. It runs on a Mac Mini via a daily cron job and costs under $1/month in API calls.
-
-Now I wake up, open a dashboard, and see the 3 to 5 listings that actually matter, scored, sorted, with reasoning for each one.
+This tool automates that process. It reads listing alert emails, extracts every property, scores each one against a configurable profile using an LLM (Anthropic Haiku), and stores the results in a local database. A dashboard shows only the listings that scored above your threshold, sorted by relevance, with the model's reasoning for each score. It runs as a daily cron job and the API costs are negligible (see [Cost](#cost)).
 
 ## How it works
 
@@ -22,7 +20,7 @@ Gmail inbox                    Profile config
      │                              │
      │  (rejects never hit the API) │
      ▼                              │
- Score with Claude Haiku ◄──────────┘
+ Score with Anthropic Haiku ◄─────────┘
      │
      ▼
  SQLite database
@@ -34,13 +32,13 @@ Gmail inbox                    Profile config
 1. **Fetch**: Pulls listing alert emails from Gmail using the API. Tracks processed message IDs to avoid re-reading.
 2. **Parse**: Each email source has its own HTML parser (BeautifulSoup). Extracts price, type, surface, location, rooms, photos, listing URL.
 3. **Pre-filter**: Hard constraints (price ceiling, minimum size, rejected types) are checked locally. Listings that fail never touch the API. Saves money.
-4. **Score**: Surviving listings go to Claude Haiku with the full scoring profile. Returns a 0–10 score, reasoning, flags, and feature observations.
+4. **Score**: Surviving listings go to Anthropic Haiku with the full scoring profile. Returns a 0-10 score, reasoning, flags, and feature observations.
 5. **Store**: Everything goes into SQLite: listings, scores, stars, notes.
 6. **Dashboard**: FastAPI serves a single-page app at `localhost:8501`. Filter by score, price, date, region. Star listings, add notes.
 
 ## Dashboard
 
-![Dashboard](docs/dashboard.png)
+![Dashboard example](docs/dashboard.png)
 
 ## What a score looks like
 
@@ -51,10 +49,10 @@ The scorer returns structured JSON for each listing:
   "score": 9,
   "hard_constraint_pass": true,
   "hard_constraint_failures": [],
-  "flags": [{"flag": "energy_class_F", "note": "expected at this price range"}],
-  "notable_features": ["stone construction", "terrace"],
-  "reasoning": "Strong price-to-size ratio in target region. Renovation-ready, which matches buyer preference for underpriced space.",
-  "condition_estimate": "needs renovation"
+  "flags": [{"flag": "roof_age_unknown", "note": "listing does not mention roof replacement date"}],
+  "notable_features": ["hardwood floors", "detached garage", "0.5 acre lot"],
+  "reasoning": "Strong price-to-size ratio in target region. 3 bedrooms, 1,400 sq ft at $127K is well under budget ceiling. Needs updating but structurally sound.",
+  "condition_estimate": "habitable but dated"
 }
 ```
 
@@ -91,7 +89,7 @@ Copy the sample and adapt it to your use case:
 cp config/sample-profile.json config/your-profile.json
 ```
 
-The profile defines hard constraints (instant rejects), scoring tiers, target regions, accepted/rejected types, flags that need human review, and features to observe. See `config/sample-profile.json` for the full structure. It uses a "used cars under $15K" example to show every field.
+The profile defines hard constraints (instant rejects), scoring tiers, target regions, accepted/rejected types, flags that need human review, and features to observe. See `config/sample-profile.json` for the full structure. The sample profile demonstrates the scoring system with a rural property search in upstate New York.
 
 ### 5. Write a parser for your email source
 
@@ -136,18 +134,14 @@ python dashboard.py                               # Dashboard at localhost:8501
 
 ## Cost
 
-Claude Haiku is the cheapest model. Each listing costs roughly $0.001 to $0.002 to score (the prompt includes the full profile + listing data, ~2K tokens in, ~500 out).
-
-At 10 new listings/day: **~$0.50/month**.
-
-Pre-filtering rejects (wrong price, wrong type, too small) before they hit the API, so you only pay for plausible candidates.
+Each listing costs roughly $0.01 to $0.02 to score with the full profile and listing data in the prompt. Pre-filtering rejects obvious mismatches before they hit the API, so you only pay for plausible candidates. Expect $2-5/month in API costs depending on volume. The tool itself runs on any always-on machine or VPS you already have.
 
 ## Stack
 
 - Python 3.12
 - Gmail API (google-api-python-client)
 - BeautifulSoup + lxml (HTML parsing)
-- Anthropic SDK + Claude Haiku (scoring)
+- Anthropic SDK + Haiku (scoring)
 - SQLite (storage)
 - FastAPI + uvicorn (dashboard)
 - Nominatim/OpenStreetMap (geocoding)
