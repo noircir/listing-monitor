@@ -2,7 +2,20 @@
 
 Real estate listing sites send dozens of alert emails a day, most of them irrelevant: wrong price, wrong area, wrong type. Scanning them manually takes 20 minutes every day, and most of it is wasted on listings that don't match.
 
-This tool automates that process. It reads listing alert emails, extracts every property, scores each one against a configurable profile using an LLM (Anthropic Haiku), and stores the results in a local database. A dashboard shows only the listings that scored above your threshold, sorted by relevance, with the model's reasoning for each score. It runs as a daily cron job and the API costs are negligible (see [Cost](#cost)).
+This agent automates that process. It reads listing alert emails, extracts every property, scores each one against a configurable profile using an LLM (Anthropic Haiku), and stores the results in a local database. A dashboard shows only the listings that scored above your threshold, sorted by relevance, with the model's reasoning for each score. It runs as a daily cron job and the API costs are negligible (see [Cost](#cost)).
+
+## What it does, end to end
+
+Every morning at 7 AM, without any human input, the agent:
+
+1. Connects to Gmail and pulls new listing alert emails from all subscribed sources
+2. Parses the HTML of each email to extract structured property data (price, size, location, type, photos)
+3. Rejects obvious mismatches locally using hard constraints from the profile (never wastes an API call on a studio apartment when you want 3 bedrooms)
+4. Sends the remaining candidates to an LLM for nuanced scoring: Does this location actually match? Is the price good for the size? Is the condition acceptable? Are there red flags in the description?
+5. Stores everything in a database, deduplicates across sources, and geocodes each property to calculate distance to reference cities and coast
+6. Serves a dashboard where you filter, star, and annotate listings at your own pace
+
+No manual step between "email arrives" and "scored listing appears on dashboard." That's the point.
 
 ## How it works
 
