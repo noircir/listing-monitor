@@ -38,6 +38,10 @@ Gmail inbox                    Profile config
 5. **Store**: Everything goes into SQLite — listings, scores, stars, notes.
 6. **Dashboard**: FastAPI serves a single-page app at `localhost:8501`. Filter by score, price, date, region. Star listings, add notes.
 
+## Dashboard
+
+![Dashboard](docs/dashboard.png)
+
 ## What a score looks like
 
 The scorer returns structured JSON for each listing:
@@ -147,7 +151,3 @@ Pre-filtering rejects (wrong price, wrong type, too small) before they hit the A
 - SQLite (storage)
 - FastAPI + uvicorn (dashboard)
 - Nominatim/OpenStreetMap (geocoding)
-
-<!-- ## Screenshot
-
-TODO: add dashboard screenshot -->
