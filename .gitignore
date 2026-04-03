@@ -18,3 +18,4 @@ parsers/seloger.py
 parsers/notaires.py
 run_cron.sh
 PRIVATE_README.md
+docs/france-departements.jpg

@@ -1,8 +1,15 @@
 import json
+import os
+import re
 import sqlite3
+import unicodedata
 from fastapi import FastAPI, Query
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 import uvicorn
+
+
+def strip_accents(s):
+    return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
 
 from storage.database import get_connection, init_db
 from geo.locate import get_geo_info
@@ -31,9 +38,20 @@ def startup():
     _ensure_dashboard_columns()
 
 
+DOCS_DIR = os.path.join(os.path.dirname(__file__), "docs")
+
+
 @app.get("/", response_class=HTMLResponse)
 def index():
     return HTML_PAGE
+
+
+@app.get("/static/{filename}")
+def static_file(filename: str):
+    path = os.path.join(DOCS_DIR, filename)
+    if os.path.exists(path):
+        return FileResponse(path)
+    return JSONResponse({"error": "not found"}, status_code=404)
 
 
 @app.get("/api/listings")
@@ -66,9 +84,7 @@ def api_listings(
         where.append("(l.price_eur IS NULL OR l.price_eur <= ?)")
         params.append(max_price)
 
-    if region:
-        where.append("l.location LIKE ?")
-        params.append(f"%{region}%")
+    region_filter = strip_accents(region.lower()) if region else ""
 
     if starred_only:
         where.append("s.starred = 1")
@@ -108,6 +124,13 @@ def api_listings(
                     pass
         d["starred"] = bool(d.get("starred"))
         loc = d.get("location")
+        if region_filter:
+            loc_normalized = strip_accents((loc or "").lower())
+            if re.match(r'^\d{1,2}$', region_filter):
+                if not re.search(r'\(' + region_filter + r'\d', loc_normalized):
+                    continue
+            elif region_filter not in loc_normalized:
+                continue
         if loc:
             geo = get_geo_info(loc)
             if geo:
@@ -219,6 +242,27 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .title-link:hover { text-decoration: underline; }
 .geo-context { font-size: 12px; color: #888; }
 
+.dept-bar { padding: 8px 24px; background: #fff; border-bottom: 1px solid #eee; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.dept-bar .dept-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: #666; margin-right: 4px; }
+.dept-chip { background: #f0f0f0; border: 1px solid #ddd; border-radius: 12px; padding: 3px 10px; font-size: 12px; color: #444; cursor: pointer; transition: all 0.15s; }
+.dept-chip:hover { background: #e3f2fd; border-color: #90caf9; }
+.dept-chip.active { background: #1565c0; color: #fff; border-color: #1565c0; }
+
+.map-toggle { background: none; border: 1px solid #ccc; border-radius: 12px; padding: 3px 10px; font-size: 12px; color: #666; cursor: pointer; margin-left: auto; }
+.map-toggle:hover { background: #f5f5f5; }
+.map-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 200; }
+.map-modal img { max-width: 90vw; max-height: 85vh; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); border: 4px solid #fff; }
+.map-modal .close-btn { position: absolute; top: 16px; right: 24px; background: #fff; border: none; border-radius: 50%; width: 36px; height: 36px; font-size: 20px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.2); color: #333; line-height: 36px; text-align: center; }
+.map-modal .close-btn:hover { background: #eee; }
+
+.cmd-card { background: #1e1e2e; border-radius: 12px; padding: 24px 32px; max-width: 900px; width: 90vw; box-shadow: 0 8px 32px rgba(0,0,0,0.4); position: relative; }
+.cmd-card h3 { color: #ccc; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin: 16px 0 8px 0; }
+.cmd-card h3:first-child { margin-top: 0; }
+.cmd-card pre { margin: 0; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; line-height: 1.8; color: #a0a0a0; }
+.cmd-card .cmd { color: #e0e0e0; }
+.cmd-card .arr { color: #555; }
+.cmd-card .desc { color: #888; }
+
 .card-price { font-size: 22px; font-weight: 800; color: #1a1a1a; margin-bottom: 2px; }
 .card-price .source-tag { vertical-align: middle; }
 
@@ -298,10 +342,94 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   </div>
 </div>
 
+<div class="dept-bar">
+  <span class="dept-label">Dept:</span>
+  <span id="dept-chips"></span>
+  <button class="map-toggle" id="map-toggle">Show map</button>
+  <button class="map-toggle" id="cmd-toggle">Commands</button>
+</div>
+
 <div class="stats" id="stats"></div>
 <div class="cards" id="cards"></div>
 
 <script>
+// Add departments here as you discover new areas of interest.
+var DEPARTMENTS = [
+  {"code": "11", "name": "Aude"},
+  {"code": "30", "name": "Gard"},
+  {"code": "34", "name": "H\u00e9rault"},
+  {"code": "66", "name": "Pyr\u00e9n\u00e9es-Orientales"},
+  {"code": "09", "name": "Ari\u00e8ge"},
+  {"code": "12", "name": "Aveyron"},
+  {"code": "81", "name": "Tarn"},
+  {"code": "48", "name": "Loz\u00e8re"},
+];
+
+var activeDept = null;
+
+function stripAccents(s) {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function renderDeptChips() {
+  document.getElementById('dept-chips').innerHTML = DEPARTMENTS.map(function(d) {
+    return '<span class="dept-chip' + (activeDept === d.code ? ' active' : '') + '" data-code="' + d.code + '">' + d.code + ' ' + d.name + '</span>';
+  }).join('');
+  document.querySelectorAll('.dept-chip').forEach(function(el) {
+    el.addEventListener('click', function() {
+      var code = this.dataset.code;
+      if (activeDept === code) {
+        activeDept = null;
+        document.getElementById('f-region').value = '';
+      } else {
+        activeDept = code;
+        document.getElementById('f-region').value = code;
+      }
+      renderDeptChips();
+      loadListings();
+    });
+  });
+}
+
+document.getElementById('map-toggle').addEventListener('click', function() {
+  var modal = document.createElement('div');
+  modal.className = 'map-modal';
+  modal.innerHTML = '<button class="close-btn">\u00d7</button><img src="/static/france-departements.jpg" alt="Department reference map">';
+  function closeModal() { if (modal.parentNode) modal.parentNode.removeChild(modal); }
+  modal.addEventListener('click', function(e) { if (e.target === modal) closeModal(); });
+  modal.querySelector('.close-btn').addEventListener('click', closeModal);
+  document.addEventListener('keydown', function handler(e) { if (e.key === 'Escape') { closeModal(); document.removeEventListener('keydown', handler); } });
+  document.body.appendChild(modal);
+});
+
+document.getElementById('cmd-toggle').addEventListener('click', function() {
+  var modal = document.createElement('div');
+  modal.className = 'map-modal';
+  modal.innerHTML = '<div class="cmd-card">' +
+    '<button class="close-btn" style="position:absolute;top:8px;right:8px;background:#333;color:#aaa;border:none;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;line-height:28px;text-align:center;">\u00d7</button>' +
+    '<h3>Pipeline commands</h3>' +
+    '<pre>' +
+    '<span class="cmd">python run.py</span>                    <span class="arr">\u2192</span> <span class="desc">Fetch new emails, score listings, results appear on dashboard</span>\\n' +
+    '<span class="cmd">python run.py --days 7</span>           <span class="arr">\u2192</span> <span class="desc">Same but covers the last 7 days of emails</span>\\n' +
+    '<span class="cmd">python run.py --dry-run --days 3</span> <span class="arr">\u2192</span> <span class="desc">Fetch and parse only, no scoring. Prints listing count in terminal</span>\\n' +
+    '<span class="cmd">python run.py --rescore</span>          <span class="arr">\u2192</span> <span class="desc">Delete all scores and re-score every listing. Use after editing profile</span>\\n' +
+    '<span class="cmd">python run.py --dedup</span>            <span class="arr">\u2192</span> <span class="desc">Find and remove duplicate listings from the database</span>' +
+    '</pre>' +
+    '<h3>Standalone</h3>' +
+    '<pre>' +
+    '<span class="cmd">python gmail/fetch_emails.py</span>                      <span class="arr">\u2192</span> <span class="desc">Print list of recent alert emails in terminal</span>\\n' +
+    '<span class="cmd">python gmail/fetch_emails.py --dump</span>               <span class="arr">\u2192</span> <span class="desc">Save newest email HTML to gmail/ folder (for writing parsers)</span>\\n' +
+    '<span class="cmd">python gmail/fetch_emails.py --dump-from notaires</span> <span class="arr">\u2192</span> <span class="desc">Same but from a specific source</span>\\n' +
+    '<span class="cmd">python scorer/score.py --test</span>                     <span class="arr">\u2192</span> <span class="desc">Score a fake listing and print the result in terminal</span>\\n' +
+    '<span class="cmd">python dashboard.py</span>                               <span class="arr">\u2192</span> <span class="desc">Start the dashboard at localhost:8501</span>' +
+    '</pre></div>';
+  function closeModal() { if (modal.parentNode) modal.parentNode.removeChild(modal); }
+  modal.addEventListener('click', function(e) { if (e.target === modal) closeModal(); });
+  modal.querySelector('.close-btn').addEventListener('click', closeModal);
+  document.addEventListener('keydown', function handler(e) { if (e.key === 'Escape') { closeModal(); document.removeEventListener('keydown', handler); } });
+  document.body.appendChild(modal);
+});
+
 function badgeClass(score) {
   if (score >= 9) return 'high';
   if (score >= 7) return 'mid';
@@ -381,7 +509,7 @@ async function loadListings() {
     days: document.getElementById('f-days').value,
     min_price: document.getElementById('f-min-price').value || '0',
     max_price: document.getElementById('f-max-price').value || '999999',
-    region: document.getElementById('f-region').value,
+    region: stripAccents(document.getElementById('f-region').value),
     starred_only: document.getElementById('f-starred').checked,
     has_notes: document.getElementById('f-notes').checked,
   });
@@ -410,12 +538,19 @@ async function saveNotes(id) {
 document.querySelectorAll('.filters select, .filters input').forEach(el => {
   el.addEventListener('change', loadListings);
 });
-document.getElementById('f-region').addEventListener('input', debounce(loadListings, 400));
+document.getElementById('f-region').addEventListener('input', debounce(function() {
+  var val = document.getElementById('f-region').value;
+  activeDept = null;
+  DEPARTMENTS.forEach(function(d) { if (d.code === val) activeDept = d.code; });
+  renderDeptChips();
+  loadListings();
+}, 400));
 
 function debounce(fn, ms) {
   let t; return function() { clearTimeout(t); t = setTimeout(fn, ms); };
 }
 
+renderDeptChips();
 loadListings();
 </script>
 </body>
