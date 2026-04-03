@@ -1,10 +1,10 @@
 # listing-monitor
 
-I was getting 30–40 listing alert emails a day from multiple sites. Most were irrelevant — wrong price, wrong area, wrong type. I spent 20 minutes every morning scanning them manually, opening tabs, mentally scoring each one. Most mornings I'd find maybe 2–3 worth a second look.
+I was getting 30 to 40 listing alert emails a day from multiple sites. Most were irrelevant: wrong price, wrong area, wrong type. I spent 20 minutes every morning scanning them manually, opening tabs, mentally scoring each one. Most mornings I'd find maybe 2 or 3 worth a second look.
 
 So I built an agent that reads the emails, extracts every listing, scores each one against my criteria using Claude, and shows me only the matches worth looking at. It runs on a Mac Mini via a daily cron job and costs under $1/month in API calls.
 
-Now I wake up, open a dashboard, and see the 3–5 listings that actually matter — scored, sorted, with reasoning for each one.
+Now I wake up, open a dashboard, and see the 3 to 5 listings that actually matter, scored, sorted, with reasoning for each one.
 
 ## How it works
 
@@ -33,9 +33,9 @@ Gmail inbox                    Profile config
 
 1. **Fetch**: Pulls listing alert emails from Gmail using the API. Tracks processed message IDs to avoid re-reading.
 2. **Parse**: Each email source has its own HTML parser (BeautifulSoup). Extracts price, type, surface, location, rooms, photos, listing URL.
-3. **Pre-filter**: Hard constraints (price ceiling, minimum size, rejected types) are checked locally — listings that fail never touch the API. Saves money.
+3. **Pre-filter**: Hard constraints (price ceiling, minimum size, rejected types) are checked locally. Listings that fail never touch the API. Saves money.
 4. **Score**: Surviving listings go to Claude Haiku with the full scoring profile. Returns a 0–10 score, reasoning, flags, and feature observations.
-5. **Store**: Everything goes into SQLite — listings, scores, stars, notes.
+5. **Store**: Everything goes into SQLite: listings, scores, stars, notes.
 6. **Dashboard**: FastAPI serves a single-page app at `localhost:8501`. Filter by score, price, date, region. Star listings, add notes.
 
 ## Dashboard
@@ -91,7 +91,7 @@ Copy the sample and adapt it to your use case:
 cp config/sample-profile.json config/your-profile.json
 ```
 
-The profile defines hard constraints (instant rejects), scoring tiers, target regions, accepted/rejected types, flags that need human review, and features to observe. See `config/sample-profile.json` for the full structure — it uses a "used cars under $15K" example to show every field.
+The profile defines hard constraints (instant rejects), scoring tiers, target regions, accepted/rejected types, flags that need human review, and features to observe. See `config/sample-profile.json` for the full structure. It uses a "used cars under $15K" example to show every field.
 
 ### 5. Write a parser for your email source
 
@@ -119,7 +119,7 @@ python dashboard.py          # Start the dashboard
 | Flag | What it does |
 |---|---|
 | `--days N` | Fetch emails from last N days (default: 1) |
-| `--dry-run` | Everything except API scoring — no cost |
+| `--dry-run` | Everything except API scoring. No cost. |
 | `--rescore` | Delete all scores, re-score every listing. Use after profile changes. |
 | `--dedup` | Remove duplicate listings and exit |
 
@@ -136,7 +136,7 @@ python dashboard.py                               # Dashboard at localhost:8501
 
 ## Cost
 
-Claude Haiku is the cheapest model. Each listing costs roughly $0.001–0.002 to score (the prompt includes the full profile + listing data, ~2K tokens in, ~500 out).
+Claude Haiku is the cheapest model. Each listing costs roughly $0.001 to $0.002 to score (the prompt includes the full profile + listing data, ~2K tokens in, ~500 out).
 
 At 10 new listings/day: **~$0.50/month**.
 
