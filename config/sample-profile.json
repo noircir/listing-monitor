@@ -1,0 +1,93 @@
+{
+  "meta": {
+    "version": "1.0",
+    "last_updated": "2026-01-15",
+    "description": "Example profile: used cars under $15K in the Pacific Northwest. The scorer reads this before evaluating each listing."
+  },
+
+  "hard_constraints": {
+    "_comment": "Any failure = automatic 0.",
+    "price_ceiling_usd": 15000,
+    "min_year": 2015,
+    "max_mileage_miles": 120000,
+    "dealbreakers": [
+      "salvage title",
+      "flood damage reported",
+      "frame damage noted",
+      "odometer rollback flagged",
+      "lien on title",
+      "non-running / needs tow"
+    ]
+  },
+
+  "price_scoring": {
+    "_comment": "Tiered scoring. Cheaper = better within reason.",
+    "ideal_max_usd": 10000,
+    "acceptable_max_usd": 15000,
+    "scoring_note": "Under 10K gets a score boost. 10K-15K scored normally. Over 15K is a hard reject."
+  },
+
+  "mileage_scoring": {
+    "_comment": "Lower mileage is better, but high-mileage Toyotas are still fine.",
+    "low_miles": 50000,
+    "normal_miles": 80000,
+    "high_miles": 120000,
+    "scoring_note": "Under 50K miles gets a boost. 50K-80K normal. 80K-120K mild penalty. Over 120K is a hard reject unless it's a Toyota or Honda."
+  },
+
+  "target_regions": {
+    "primary": ["Portland OR", "Seattle WA", "Eugene OR", "Olympia WA"],
+    "secondary": ["Boise ID", "Bend OR", "Spokane WA"],
+    "scoring_note": "Primary regions get a score boost. Secondary regions scored normally. California, Nevada = reject (too far to inspect)."
+  },
+
+  "vehicle_types": {
+    "accepted": ["sedan", "hatchback", "wagon", "small SUV / crossover", "pickup truck (midsize)"],
+    "rejected": ["luxury / sports car", "full-size truck", "commercial van", "RV / motorhome", "motorcycle", "ATV"]
+  },
+
+  "condition": {
+    "accepted": ["clean title, runs well", "minor cosmetic issues", "needs basic maintenance (brakes, tires)"],
+    "scoring_note": "Clean title + runs well is ideal. Minor cosmetic issues are fine. Mechanical issues only if price is very low (<$5K)."
+  },
+
+  "flags_not_rejects": {
+    "_comment": "Surface these with a note, do not auto-reject.",
+    "items": [
+      "single owner — generally a good sign",
+      "no maintenance records — could be fine, needs inspection",
+      "aftermarket modifications — check if tasteful or warranty-voiding",
+      "out-of-state title — may need emissions re-test",
+      "dealer listing vs private seller — note for price negotiation context",
+      "no photos or very few photos — might be hidden gem or red flag"
+    ]
+  },
+
+  "features_not_scored": {
+    "_comment": "Noted but don't affect score yet.",
+    "observe_and_report": ["AWD/4WD", "backup camera", "heated seats", "sunroof", "tow package", "roof rack", "low owner count", "service records available", "winter tires included"]
+  },
+
+  "scoring_thresholds": {
+    "surface_to_candidate": 7,
+    "needs_review": "5-6",
+    "auto_dismiss": 4,
+    "preference": "Prefer false negatives over false positives. Buyer's time is limited."
+  },
+
+  "output_format": {
+    "score": "integer 0-10",
+    "hard_constraint_pass": "boolean",
+    "hard_constraint_failures": "list",
+    "flags": "list of {flag, note}",
+    "price_usd": "integer",
+    "year": "integer or 'unknown'",
+    "mileage_miles": "number or 'unknown'",
+    "location": "city, state",
+    "vehicle_type": "string",
+    "condition_estimate": "string",
+    "notable_features": "list of observed features from the features_not_scored list",
+    "reasoning": "2-3 sentences",
+    "listing_url": "string"
+  }
+}
