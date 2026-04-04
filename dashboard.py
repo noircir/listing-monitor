@@ -292,7 +292,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   </div>
   <nav>
     <a href="#" class="active">:8501 listings</a>
-    <a href="#">:8502</a>
+    <a href="http://localhost:8502">:8502</a>
     <a href="#">:8503</a>
     <a href="#">:8504</a>
     <a href="#">:8505</a>

@@ -6,7 +6,7 @@ This agent automates that process. It reads listing alert emails, extracts every
 
 ## What it does, end to end
 
-Every morning at 7 AM, without any human input, the agent:
+Every morning at 7 AM the agent:
 
 1. Connects to Gmail and pulls new listing alert emails from all subscribed sources
 2. Parses the HTML of each email to extract structured property data (price, size, location, type, photos)
@@ -15,7 +15,7 @@ Every morning at 7 AM, without any human input, the agent:
 5. Stores everything in a database, deduplicates across sources, and geocodes each property to calculate distance to reference cities and coast
 6. Serves a dashboard where you filter, star, and annotate listings at your own pace
 
-No manual step between "email arrives" and "scored listing appears on dashboard." That's the point.
+No manual step between "email arrives" and "scored listing appears on dashboard." 
 
 ## How it works
 
